@@ -430,6 +430,9 @@ object AiThemeController : AiThemeService {
             customHomeTitle = repo.customHomeTitle.takeIf { it.isNotBlank() },
             customTexts = repo.customTexts.takeIf { it.isNotEmpty() },
             appearance = AppearanceOverlayStore.data(repo),
+            uiCustomization = com.sukisu.ultra.ui.util.UiCustomizationStore.load(repo).takeIf {
+                it != com.sukisu.ultra.ui.util.UiCustomizationData()
+            },
         )
     }
 

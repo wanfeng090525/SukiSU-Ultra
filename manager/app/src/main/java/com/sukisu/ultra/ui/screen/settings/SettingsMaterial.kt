@@ -3,6 +3,9 @@ package com.sukisu.ultra.ui.screen.settings
 import com.sukisu.ultra.ui.component.profile.TemporaryRootPreferences
 import com.sukisu.ultra.ui.util.customText
 import com.sukisu.ultra.ui.util.CustomTextKey
+import com.sukisu.ultra.ui.util.LocalUiCustomization
+import com.sukisu.ultra.ui.util.UiSlots
+import com.sukisu.ultra.ui.util.isVisible
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LayersClear
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Tune
 import com.sukisu.ultra.ui.component.Storefront
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Policy
@@ -117,7 +121,9 @@ fun SettingPagerMaterial(
     ExpressiveScaffold(
         containerColor = if (hasCustomBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            TopBar(scrollBehavior = scrollBehavior)
+            if (LocalUiCustomization.current.isVisible(UiSlots.CHROME_TOP_BAR)) {
+                TopBar(scrollBehavior = scrollBehavior)
+            }
         },
         snackbarHost = { SnackBarHost(hostState = snackBarHost, modifier = Modifier.padding(bottom = bottomInnerPadding)) },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
@@ -179,6 +185,21 @@ fun SettingPagerMaterial(
                             headlineContent = { Text(themeStoreTitle) },
                             supportingContent = { Text(stringResource(id = R.string.theme_store_summary)) },
                             leadingContent = { IconTile(Icons.Filled.Storefront, themeStoreTitle) },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    null
+                                )
+                            }
+                        )
+                    }
+                    add {
+                        val uiEditorTitle = stringResource(id = R.string.ui_editor_entry)
+                        SegmentedListItem(
+                            onClick = actions.onOpenUiEditor,
+                            headlineContent = { Text(uiEditorTitle) },
+                            supportingContent = { Text(stringResource(id = R.string.ui_editor_entry_summary)) },
+                            leadingContent = { IconTile(Icons.Filled.Tune, uiEditorTitle) },
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -538,6 +559,7 @@ private fun SettingsAnchor(
     registry: MutableMap<String, BringIntoViewRequester>,
     content: @Composable () -> Unit,
 ) {
+    if (!LocalUiCustomization.current.isVisible(UiSlots.settingsCard(anchor))) return
     val requester = remember { BringIntoViewRequester() }
     SideEffect { registry[anchor] = requester }
     Box(modifier = Modifier.fillMaxWidth().bringIntoViewRequester(requester)) {

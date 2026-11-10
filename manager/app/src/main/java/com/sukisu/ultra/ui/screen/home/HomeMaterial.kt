@@ -91,7 +91,12 @@ import com.sukisu.ultra.ui.theme.LocalBackgroundImagePath
 import com.sukisu.ultra.ui.theme.backgroundAwareColor
 import com.sukisu.ultra.ui.util.CustomTextKey
 import com.sukisu.ultra.ui.util.HomeLayout
+import com.sukisu.ultra.ui.util.LocalUiCustomization
+import com.sukisu.ultra.ui.util.UiLayoutKeys
+import com.sukisu.ultra.ui.util.UiSlots
 import com.sukisu.ultra.ui.util.customText
+import com.sukisu.ultra.ui.util.isVisible
+import com.sukisu.ultra.ui.util.layoutDp
 import com.sukisu.ultra.ui.util.drawPainterCover
 import com.sukisu.ultra.ui.util.module.LatestVersionInfo
 import java.io.File
@@ -107,10 +112,18 @@ fun HomePagerMaterial(
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val hasCustomBackground = LocalBackgroundImagePath.current.isNotEmpty()
+    val uiCustomization = LocalUiCustomization.current
+    val horizontalPadding = uiCustomization.layoutDp(UiLayoutKeys.HOME_PADDING, 16.dp)
+    val topPadding = uiCustomization.layoutDp(UiLayoutKeys.HOME_TOP_PADDING, 12.dp)
+    val itemSpacing = uiCustomization.layoutDp(UiLayoutKeys.HOME_SPACING, 12.dp)
 
     ExpressiveScaffold(
         containerColor = if (hasCustomBackground) Color.Transparent else MaterialTheme.colorScheme.surfaceContainer,
-        topBar = { TopBar(scrollBehavior = scrollBehavior, onOpenThemeStore = actions.onOpenThemeStore) },
+        topBar = {
+            if (uiCustomization.isVisible(UiSlots.CHROME_TOP_BAR)) {
+                TopBar(scrollBehavior = scrollBehavior, onOpenThemeStore = actions.onOpenThemeStore)
+            }
+        },
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
     ) { innerPadding ->
         Column(
@@ -118,22 +131,25 @@ fun HomePagerMaterial(
                 .padding(innerPadding)
                 .nestedScroll(scrollBehavior.nestedScrollConnection)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(horizontal = horizontalPadding, vertical = topPadding),
+            verticalArrangement = Arrangement.spacedBy(itemSpacing)
         ) {
-            StatusCard(
-                state = state,
-                actions = actions,
-            )
-            if (state.showVersionMismatchWarning) {
+            if (uiCustomization.isVisible(UiSlots.HOME_STATUS)) {
+                StatusCard(
+                    state = state,
+                    actions = actions,
+                )
+            }
+            if (state.showVersionMismatchWarning && uiCustomization.isVisible(UiSlots.HOME_WARNINGS)) {
                 WarningCard(
                     customText(CustomTextKey.HOME_WARN_VERSION_SPOOF),
                     onClick = actions.onOpenVersionSpoof,
                 )
             }
-            if (state.checkUpdateEnabled) {
+            if (state.checkUpdateEnabled && uiCustomization.isVisible(UiSlots.HOME_UPDATE)) {
                 UpdateCard(state = state, actions = actions)
             }
+            if (uiCustomization.isVisible(UiSlots.HOME_WARNINGS)) {
             if (!state.hideHomeWarnings) {
                 if (state.showManagerPrBuildWarning && state.showFullStatus) {
                     WarningCard(customText(CustomTextKey.HOME_WARN_PR_BUILD), level = WarningLevel.Notice)
@@ -168,12 +184,21 @@ fun HomePagerMaterial(
             if (state.isPreviewMode && !state.hideHomeWarnings) {
                 WarningCard(customText(CustomTextKey.HOME_WARN_PREVIEW_MODE), level = WarningLevel.Notice)
             }
-            if (state.showAiHomeCard && AiFeatureBridge.isAvailable) {
+            }
+            if (state.showAiHomeCard && AiFeatureBridge.isAvailable &&
+                uiCustomization.isVisible(UiSlots.HOME_AI)
+            ) {
                 AiFeatureBridge.HomeCard(onOpenChat = actions.onOpenAi)
             }
-            StatsRow(state = state, actions = actions)
-            InfoCard(systemInfo = state.systemInfo, showFullStatus = state.showFullStatus)
-            SupportLinks(onOpenUrl = actions.onOpenUrl)
+            if (uiCustomization.isVisible(UiSlots.HOME_STATS)) {
+                StatsRow(state = state, actions = actions)
+            }
+            if (uiCustomization.isVisible(UiSlots.HOME_INFO)) {
+                InfoCard(systemInfo = state.systemInfo, showFullStatus = state.showFullStatus)
+            }
+            if (uiCustomization.isVisible(UiSlots.HOME_SUPPORT)) {
+                SupportLinks(onOpenUrl = actions.onOpenUrl)
+            }
             Spacer(
                 Modifier.height(
                     bottomInnerPadding + if (!Natives.isFullFeatured())

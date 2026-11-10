@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sukisu.ultra.ui.LocalUiMode
 import com.sukisu.ultra.ui.UiMode
 import com.sukisu.ultra.ui.navigation3.LocalNavigator
+import com.sukisu.ultra.ui.navigation3.Route
 import com.sukisu.ultra.ui.viewmodel.ExtensionItem
 import com.sukisu.ultra.ui.viewmodel.ExtensionsViewModel
 
@@ -48,6 +49,7 @@ fun ExtensionsScreen() {
             onRefresh = viewModel::refresh,
             onOpenDetails = onOpenDetails,
             onToggle = viewModel::setEnabled,
+            onOpenTerminal = { navigator.push(Route.Terminal) },
         )
         UiMode.Material -> ExtensionsScreenMaterial(
             state = state,
@@ -55,6 +57,7 @@ fun ExtensionsScreen() {
             onRefresh = viewModel::refresh,
             onOpenDetails = onOpenDetails,
             onToggle = viewModel::setEnabled,
+            onOpenTerminal = { navigator.push(Route.Terminal) },
         )
     }
 }

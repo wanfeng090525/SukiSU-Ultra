@@ -50,6 +50,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,10 +81,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import com.sukisu.ultra.Natives
 import com.sukisu.ultra.ui.component.bottombar.BottomBar
+import com.sukisu.ultra.ui.component.bottombar.BottomBarDestination
 import com.sukisu.ultra.ui.component.bottombar.MainPagerState
 import com.sukisu.ultra.ui.component.bottombar.NavigationBadgeState
 import com.sukisu.ultra.ui.component.bottombar.SideRail
+import com.sukisu.ultra.ui.component.bottombar.rememberBottomBarVisible
 import com.sukisu.ultra.ui.component.bottombar.rememberMainPagerState
+import com.sukisu.ultra.ui.component.bottombar.rememberVisibleDestinations
 import com.sukisu.ultra.ui.component.bottombar.useNavigationRail
 import com.sukisu.ultra.ui.kernelFlash.KernelFlashScreen
 import com.sukisu.ultra.ui.navigation3.IntentDispatcher
@@ -100,6 +104,7 @@ import com.sukisu.ultra.ui.screen.account.AccountScreen
 import com.sukisu.ultra.ui.screen.themestore.ThemeStoreScreen
 import com.sukisu.ultra.ui.screen.themestore.ThemeStoreSourcesScreen
 import com.sukisu.ultra.ui.util.LocalCustomTexts
+import com.sukisu.ultra.ui.util.LocalUiCustomization
 import com.sukisu.ultra.ui.screen.appprofile.AppProfileScreen
 import com.sukisu.ultra.ui.screen.backgroundcrop.BackgroundCropScreen
 import com.sukisu.ultra.ui.screen.colorpalette.AdaptiveThemeBuilderScreen
@@ -109,6 +114,8 @@ import com.sukisu.ultra.ui.screen.dynamicmanagers.DynamicManagersScreen
 import com.sukisu.ultra.ui.screen.extensions.ExtensionsScreen
 import com.sukisu.ultra.ui.screen.extensions.CpuSpoofScreen
 import com.sukisu.ultra.ui.screen.extensions.VersionSpoofScreen
+import com.sukisu.ultra.ui.screen.terminal.TerminalScreen
+import com.sukisu.ultra.ui.screen.uiedit.UiEditorScreen
 import com.sukisu.ultra.ui.screen.executemoduleaction.ExecuteModuleActionScreen
 import com.sukisu.ultra.ui.screen.flash.FlashScreen
 import com.sukisu.ultra.ui.screen.home.HomePager
@@ -269,6 +276,7 @@ class MainActivity : ComponentActivity() {
                 LocalCardBackgroundAlpha provides (uiState.cardBackgroundAlphaPercent / 100f),
                 LocalUiMode provides uiMode,
                 LocalCustomTexts provides uiState.customTexts,
+                LocalUiCustomization provides uiState.uiCustomization,
             ) {
                 KernelSUTheme(appSettings = themedAppSettings, uiMode = uiMode) {
                     IntentDispatcher(intentChannel = intentChannel)
@@ -289,11 +297,15 @@ class MainActivity : ComponentActivity() {
                     // (and their swipeDismiss) when the builder lambda changes, so it must capture the value.
                     val scriptRunSwipeDismiss = if (scriptRunBackEnabled) swipeDismiss else NavSwipeDirection.None
                     val mainScreenEntry = @Composable {
-                        MainScreen(
-                            initialPage = selectedMainPage,
-                            pagerInterceptionMode = uiState.pagerInterceptionMode,
-                            onPageChanged = viewModel::setSelectedMainPage,
-                        )
+                        val layoutKey = uiState.uiCustomization.hiddenScreens.sorted().joinToString(",") +
+                            "|" + uiState.uiCustomization.navOrder.joinToString(",")
+                        key(layoutKey) {
+                            MainScreen(
+                                initialPage = selectedMainPage,
+                                pagerInterceptionMode = uiState.pagerInterceptionMode,
+                                onPageChanged = viewModel::setSelectedMainPage,
+                            )
+                        }
                     }
 
                     val navDisplay = @Composable {
@@ -407,6 +419,16 @@ class MainActivity : ComponentActivity() {
                                 entry<Route.KernelModules>(swipeDismiss = swipeDismiss)  { KernelModulesScreen() }
                                 entry<Route.DynamicManagers>(swipeDismiss = swipeDismiss) { DynamicManagersScreen() }
                                 entry<Route.Extensions>(swipeDismiss = swipeDismiss) { ExtensionsScreen() }
+                                entry<Route.Terminal>(swipeDismiss = swipeDismiss) {
+                                    AiAssistantMaterialTheme {
+                                        TerminalScreen(onBack = { navigator.pop() })
+                                    }
+                                }
+                                entry<Route.UiEditor>(swipeDismiss = swipeDismiss) {
+                                    AiAssistantMaterialTheme {
+                                        UiEditorScreen(onBack = { navigator.pop() })
+                                    }
+                                }
                                 entry<Route.CpuSpoof>(swipeDismiss = swipeDismiss) { CpuSpoofScreen() }
                                 entry<Route.VersionSpoof>(swipeDismiss = swipeDismiss) { VersionSpoofScreen() }
                                 entry<Route.AiAssistant>(swipeDismiss = swipeDismiss) {
@@ -561,15 +583,27 @@ fun MainScreen(
     val enableFloatingBottomBar = LocalEnableFloatingBottomBar.current
     val enableFloatingBottomBarBlur = LocalEnableFloatingBottomBarBlur.current
     val useNavigationRail = useNavigationRail(enableFloatingBottomBar)
-    val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { MainPagerConfig.PAGE_COUNT })
+    val visibleDestinations = rememberVisibleDestinations()
+    val destinations = remember(visibleDestinations) { visibleDestinations.map { it.ordinal } }
+    val bottomBarVisible = rememberBottomBarVisible()
+    val initialPosition = remember(initialPage, destinations) {
+        destinations.indexOf(initialPage).coerceAtLeast(0)
+    }
+    val pagerState = rememberPagerState(
+        initialPage = initialPosition,
+        pageCount = { destinations.size },
+    )
     val mainPagerState = rememberMainPagerState(
         pagerState = pagerState,
+        destinations = destinations,
         animatePageChanges = !useNavigationRail,
     )
     // The AI assistant can request a tab from outside MainScreen; follow the
-    // selected page when it changes without a pager gesture.
-    LaunchedEffect(initialPage) {
-        if (pagerState.currentPage != initialPage) {
+    // selected page when it changes without a pager gesture. A hidden page is
+    // ignored because animateToPage only accepts visible destinations.
+    LaunchedEffect(initialPage, destinations) {
+        val target = destinations.indexOf(initialPage)
+        if (target >= 0 && pagerState.currentPage != target) {
             mainPagerState.animateToPage(initialPage)
         }
     }
@@ -593,8 +627,10 @@ fun MainScreen(
     }.collectAsStateWithLifecycle(0)
 
     var startupPreloadStarted by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(isFullFeatured) {
-        if (!isFullFeatured || startupPreloadStarted) {
+    LaunchedEffect(isFullFeatured, badgeEnabled) {
+        // The dedicated pages load their own data on first display. Only preload when the
+        // navigation badge actually needs the numbers, which keeps cold start much cheaper.
+        if (!isFullFeatured || !badgeEnabled || startupPreloadStarted) {
             return@LaunchedEffect
         }
 
@@ -667,7 +703,7 @@ fun MainScreen(
 
     val settledPage = mainPagerState.pagerState.settledPage
     LaunchedEffect(settledPage) {
-        onPageChanged(settledPage)
+        onPageChanged(mainPagerState.destinationAt(settledPage))
     }
 
     val currentPage = mainPagerState.pagerState.currentPage
@@ -693,7 +729,7 @@ fun MainScreen(
                         // Material always floats its bar, so only the glass/progressive band matters there.
                         .then(if (needsBottomBarBackdrop) Modifier.layerBackdrop(backdrop) else Modifier),
                     state = mainPagerState.pagerState,
-                    beyondViewportPageCount = if (contentReady) 3 else 0,
+                    beyondViewportPageCount = if (contentReady) 1 else 0,
                     overscrollEffect = null,
                     userScrollEnabled = userScrollEnabled && !interceptPagerGestures,
                     pageNestedScrollConnection = if (interceptPagerGestures) {
@@ -710,17 +746,26 @@ fun MainScreen(
                     ),
                 ) { page ->
                     val isCurrentPage = page == settledPage
-                    when (page) {
-                        0 -> if (contentReady || isCurrentPage) HomePager(navController, bottomInnerPadding, isCurrentPage)
-                        1 -> if (contentReady || isCurrentPage) SuperUserPager(navController, bottomInnerPadding, isCurrentPage)
-                        2 -> if (contentReady || isCurrentPage) ModulePager(bottomInnerPadding, isCurrentPage)
-                        3 -> if (contentReady || isCurrentPage) SettingPager(navController, bottomInnerPadding, isCurrentPage)
+                    when (visibleDestinations.getOrNull(page)) {
+                        BottomBarDestination.Home ->
+                            if (contentReady || isCurrentPage) HomePager(navController, bottomInnerPadding, isCurrentPage)
+
+                        BottomBarDestination.SuperUser ->
+                            if (contentReady || isCurrentPage) SuperUserPager(navController, bottomInnerPadding, isCurrentPage)
+
+                        BottomBarDestination.Module ->
+                            if (contentReady || isCurrentPage) ModulePager(bottomInnerPadding, isCurrentPage)
+
+                        BottomBarDestination.Setting ->
+                            if (contentReady || isCurrentPage) SettingPager(navController, bottomInnerPadding, isCurrentPage)
+
+                        null -> Unit
                     }
                 }
             }
         }
 
-        if (useNavigationRail) {
+        if (useNavigationRail && bottomBarVisible) {
             val startInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout)
                 .only(WindowInsetsSides.Start)
             val navBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
@@ -756,7 +801,7 @@ fun MainScreen(
                     }
                 }
             }
-        } else {
+        } else if (bottomBarVisible) {
             val bottomBar = @Composable {
                 Box(
                     modifier = Modifier.fillMaxWidth()
@@ -785,6 +830,10 @@ fun MainScreen(
                     pagerContent(innerPadding.calculateBottomPadding())
                 }
             }
+        } else {
+            // The theme hides the navigation chrome entirely; keep swipe navigation available.
+            val navBarBottomPadding = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+            pagerContent(navBarBottomPadding)
         }
     }
 }
@@ -796,7 +845,8 @@ private fun MainScreenBackHandler(
 ) {
     val isPagerBackHandlerEnabled by remember {
         derivedStateOf {
-            navController.current() is Route.Main && navController.backStackSize() == 1 && mainState.selectedPage != 0
+            navController.current() is Route.Main && navController.backStackSize() == 1 &&
+                mainState.selectedPage != mainState.firstDestination
         }
     }
 
@@ -806,7 +856,7 @@ private fun MainScreenBackHandler(
         state = navEventState,
         isBackEnabled = isPagerBackHandlerEnabled,
         onBackCompleted = {
-            mainState.animateToPage(0)
+            mainState.animateToPage(mainState.firstDestination)
         }
     )
 }

@@ -66,6 +66,14 @@ sealed interface Route : NavKey, Parcelable {
     @Serializable
     data object CustomTexts : Route
 
+    @Parcelize
+    @Serializable
+    data object UiEditor : Route
+
+    @Parcelize
+    @Serializable
+    data object Terminal : Route
+
     
     @Parcelize
     @Serializable

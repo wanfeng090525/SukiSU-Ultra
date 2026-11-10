@@ -28,8 +28,9 @@ class MainPagerState(
     val pagerState: PagerState,
     private val coroutineScope: CoroutineScope,
     private val animatePageChanges: Boolean,
+    private val destinations: List<Int> = BottomBarDestination.entries.map { it.ordinal },
 ) {
-    var selectedPage by mutableIntStateOf(pagerState.currentPage)
+    var selectedPage by mutableIntStateOf(destinationAt(pagerState.currentPage))
         private set
 
     var isNavigating by mutableStateOf(false)
@@ -37,7 +38,18 @@ class MainPagerState(
 
     private var navJob: Job? = null
 
+    val firstDestination: Int
+        get() = destinations.firstOrNull() ?: BottomBarDestination.Home.ordinal
+
+    val selectedPosition: Int
+        get() = destinations.indexOf(selectedPage).coerceAtLeast(0)
+
+    fun destinationAt(position: Int): Int =
+        destinations.getOrElse(position) { firstDestination }
+
     fun animateToPage(targetIndex: Int) {
+        val targetPosition = destinations.indexOf(targetIndex)
+        if (targetPosition < 0) return
         if (targetIndex == selectedPage) return
 
         navJob?.cancel()
@@ -49,15 +61,15 @@ class MainPagerState(
             val myJob = coroutineContext.job
             try {
                 if (animatePageChanges) {
-                    pagerState.springAnimateToPage(targetIndex)
+                    pagerState.springAnimateToPage(targetPosition)
                 } else {
-                    pagerState.scrollToPage(targetIndex)
+                    pagerState.scrollToPage(targetPosition)
                 }
             } finally {
                 if (navJob == myJob) {
                     isNavigating = false
-                    if (pagerState.currentPage != targetIndex) {
-                        selectedPage = pagerState.currentPage
+                    if (pagerState.currentPage != targetPosition) {
+                        selectedPage = destinationAt(pagerState.currentPage)
                     }
                 }
             }
@@ -65,8 +77,9 @@ class MainPagerState(
     }
 
     fun syncPage() {
-        if (!isNavigating && selectedPage != pagerState.currentPage) {
-            selectedPage = pagerState.currentPage
+        val destination = destinationAt(pagerState.currentPage)
+        if (!isNavigating && selectedPage != destination) {
+            selectedPage = destination
         }
     }
 }
@@ -74,11 +87,12 @@ class MainPagerState(
 @Composable
 fun rememberMainPagerState(
     pagerState: PagerState,
+    destinations: List<Int> = BottomBarDestination.entries.map { it.ordinal },
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     animatePageChanges: Boolean = true,
 ): MainPagerState {
-    return remember(pagerState, coroutineScope, animatePageChanges) {
-        MainPagerState(pagerState, coroutineScope, animatePageChanges)
+    return remember(pagerState, destinations, coroutineScope, animatePageChanges) {
+        MainPagerState(pagerState, coroutineScope, animatePageChanges, destinations)
     }
 }
 
@@ -125,6 +139,7 @@ fun BottomBar(
     navigationBadge: NavigationBadgeState,
     modifier: Modifier = Modifier,
 ) {
+    if (!rememberBottomBarVisible()) return
     when (LocalUiMode.current) {
         UiMode.Miuix -> BottomBarMiuix(blurBackdrop, backdrop, navigationBadge, modifier)
         UiMode.Material -> BottomBarMaterial(backdrop, navigationBadge, modifier)
@@ -136,6 +151,7 @@ fun SideRail(
     navigationBadge: NavigationBadgeState,
     modifier: Modifier = Modifier,
 ) {
+    if (!rememberBottomBarVisible()) return
     when (LocalUiMode.current) {
         UiMode.Miuix -> NavigationRailMiuix(navigationBadge, modifier)
         UiMode.Material -> NavigationRailMaterial(navigationBadge, modifier)

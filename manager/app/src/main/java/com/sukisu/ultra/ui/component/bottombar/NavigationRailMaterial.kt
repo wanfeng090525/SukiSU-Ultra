@@ -58,12 +58,15 @@ fun NavigationRailMaterial(
 
     val mainPagerState = LocalMainPagerState.current
 
-    val items = listOf(
-        Triple(CustomTextKey.PAGE_HOME, Icons.Filled.Home, Icons.Outlined.Home),
-        Triple(CustomTextKey.PAGE_SUPERUSER, Icons.Filled.Shield, Icons.Outlined.Shield),
-        Triple(CustomTextKey.PAGE_MODULES, Icons.Filled.Extension, Icons.Outlined.Extension),
-        Triple(CustomTextKey.PAGE_SETTINGS, Icons.Filled.Settings, Icons.Outlined.Settings)
-    )
+    val items = rememberVisibleDestinations().map { destination ->
+        val (selectedIcon, unselectedIcon) = when (destination) {
+            BottomBarDestination.Home -> Icons.Filled.Home to Icons.Outlined.Home
+            BottomBarDestination.SuperUser -> Icons.Filled.Shield to Icons.Outlined.Shield
+            BottomBarDestination.Module -> Icons.Filled.Extension to Icons.Outlined.Extension
+            BottomBarDestination.Setting -> Icons.Filled.Settings to Icons.Outlined.Settings
+        }
+        RailNavItem(destination, destination.textKey, selectedIcon, unselectedIcon)
+    }
 
     val settingsRepo = remember { SettingsRepositoryImpl() }
     val state = rememberWideNavigationRailState(
@@ -110,21 +113,21 @@ fun NavigationRailMaterial(
             }
         },
     ) {
-        items.forEachIndexed { index, (label, selectedIcon, unselectedIcon) ->
-            val selected = mainPagerState.selectedPage == index
+        items.forEach { (destination, label, selectedIcon, unselectedIcon) ->
+            val selected = mainPagerState.selectedPage == destination.ordinal
             WideNavigationRailItem(
                 railExpanded = expanded,
                 selected = selected,
                 onClick = {
                     if (!selected) {
-                        mainPagerState.animateToPage(index)
+                        mainPagerState.animateToPage(destination.ordinal)
                     }
                 },
                 icon = {
                     NavigationIconWithBadge(
                         icon = if (selected) selectedIcon else unselectedIcon,
                         contentDescription = customText(label),
-                        badge = badgeFor(index, navigationBadge),
+                        badge = badgeFor(destination.ordinal, navigationBadge),
                     )
                 },
                 label = {
@@ -145,3 +148,10 @@ fun NavigationRailMaterial(
         }
     }
 }
+
+private data class RailNavItem(
+    val destination: BottomBarDestination,
+    val label: CustomTextKey,
+    val selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    val unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
+)

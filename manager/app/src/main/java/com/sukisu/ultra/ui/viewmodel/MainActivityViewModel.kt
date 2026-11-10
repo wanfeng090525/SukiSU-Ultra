@@ -10,11 +10,13 @@ import androidx.lifecycle.viewModelScope
 import com.sukisu.ultra.data.repository.SettingsRepository
 import com.sukisu.ultra.data.repository.SettingsRepositoryImpl
 import com.sukisu.ultra.data.repository.KEY_CUSTOM_APPEARANCE
+import com.sukisu.ultra.data.repository.KEY_UI_CUSTOMIZATION
 import com.sukisu.ultra.ksuApp
 import com.sukisu.ultra.ui.UiMode
 import com.sukisu.ultra.ui.theme.ThemeController
 import com.sukisu.ultra.ui.util.AdaptiveThemeStore
 import com.sukisu.ultra.ui.util.ImageStorage
+import com.sukisu.ultra.ui.util.UiCustomizationStore
 import java.io.File
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -159,6 +161,7 @@ class MainActivityViewModel(
                 .takeIf { it != NO_PENDING_SEED },
             uiMode = UiMode.fromValue(settingRepo.uiMode),
             customTexts = settingRepo.customTexts,
+            uiCustomization = UiCustomizationStore.load(settingRepo),
         )
     }
 
@@ -197,6 +200,7 @@ class MainActivityViewModel(
             "adaptive_theme",
             "adaptive_applied_mode",
             KEY_CUSTOM_APPEARANCE,
+            KEY_UI_CUSTOMIZATION,
             "home_card_image_path",
             "home_card_stickers",
             "hide_home_card_status_text",

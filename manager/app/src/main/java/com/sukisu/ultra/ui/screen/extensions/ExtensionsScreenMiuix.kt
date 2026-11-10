@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,9 @@ import com.sukisu.ultra.ui.component.miuix.AppScaffold
 import com.sukisu.ultra.ui.theme.LocalBackgroundImagePath
 import com.sukisu.ultra.ui.theme.LocalEnableBlur
 import com.sukisu.ultra.ui.util.BlurredBar
+import com.sukisu.ultra.ui.util.LocalUiCustomization
+import com.sukisu.ultra.ui.util.UiSlots
+import com.sukisu.ultra.ui.util.isVisible
 import com.sukisu.ultra.ui.util.rememberBlurBackdrop
 import com.sukisu.ultra.ui.viewmodel.ExtensionItem
 import com.sukisu.ultra.ui.viewmodel.ExtensionsUiState
@@ -67,7 +71,9 @@ fun ExtensionsScreenMiuix(
     onRefresh: () -> Unit,
     onOpenDetails: (ExtensionItem) -> Unit,
     onToggle: (ExtensionItem, Boolean) -> Unit,
+    onOpenTerminal: () -> Unit,
 ) {
+    val uiCustomization = LocalUiCustomization.current
     val scrollBehavior = MiuixScrollBehavior()
     val hasCustomBackground = LocalBackgroundImagePath.current.isNotEmpty()
     val enableBlur = LocalEnableBlur.current
@@ -120,6 +126,9 @@ fun ExtensionsScreenMiuix(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
             ) {
+                if (uiCustomization.isVisible(UiSlots.EXTENSIONS_TERMINAL)) {
+                    TerminalCardMiuix(onOpenTerminal, Modifier.fillMaxWidth())
+                }
                 Text(
                     text = stringResource(R.string.extension_empty_title),
                     style = textStyles.title3,
@@ -153,6 +162,12 @@ fun ExtensionsScreenMiuix(
             item(key = "top-inset") {
                 Spacer(Modifier.height(0.dp))
             }
+            if (uiCustomization.isVisible(UiSlots.EXTENSIONS_TERMINAL)) {
+                item(key = "terminal") {
+                    TerminalCardMiuix(onOpenTerminal)
+                }
+            }
+            if (uiCustomization.isVisible(UiSlots.EXTENSIONS_LIST)) {
             items(state.items, key = { it.wireName }) { item ->
                 val extState = item.state
                 val canOpen = extState.supported && item.descriptor.entry !is ExtensionEntry.Generic
@@ -166,6 +181,7 @@ fun ExtensionsScreenMiuix(
                     onToggle = { enabled -> onToggle(item, enabled) },
                 )
             }
+            }
             // Same pattern as HomePagerMiuix: a trailing spacer, not
             // contentPadding, gives the list a real scroll range so the last
             // card can move above the navigation bar.
@@ -178,6 +194,53 @@ fun ExtensionsScreenMiuix(
                     ),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun TerminalCardMiuix(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AppCard(
+        modifier = modifier
+            .padding(top = 12.dp)
+            .fillMaxWidth(),
+    ) {
+        BasicComponent(
+            modifier = Modifier.fillMaxWidth(),
+            startAction = {
+                Icon(
+                    imageVector = Icons.Rounded.Terminal,
+                    contentDescription = null,
+                    modifier = Modifier.padding(end = 6.dp),
+                    tint = colorScheme.onBackground,
+                )
+            },
+            endActions = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = colorScheme.onBackground,
+                )
+            },
+            insideMargin = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            onClick = onClick,
+        ) {
+            Text(
+                text = stringResource(R.string.terminal_card_title),
+                style = textStyles.title4,
+                color = colorScheme.onBackground,
+            )
+            Text(
+                text = stringResource(R.string.terminal_card_summary),
+                modifier = Modifier.padding(top = 4.dp),
+                style = textStyles.body2,
+                color = colorScheme.onSurfaceVariantSummary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }

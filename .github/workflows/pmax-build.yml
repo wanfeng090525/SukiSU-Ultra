@@ -1,0 +1,77 @@
+name: PMax Manager Build
+
+# Lightweight manager-only pipeline: does not build the kernel module, ksud or
+# ksuinit, and needs no repository secrets. Useful for forks that only change
+# the Manager app.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "pmax" ]
+    paths:
+      - 'manager/**'
+      - '.github/workflows/pmax-build.yml'
+
+concurrency:
+  group: pmax-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-manager:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./manager
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # The release build type is minified; signing properties are optional in
+      # the Gradle setup, so generate a throwaway key to get installable APKs
+      # without depending on repository secrets.
+      - name: Configure signing
+        run: |
+          set -e
+          KEYSTORE_PATH="$GITHUB_WORKSPACE/pmax-ci.jks"
+          keytool -genkeypair \
+            -alias pmax \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass pmax-ci \
+            -keypass pmax-ci \
+            -dname "CN=PMax CI" \
+            -storetype JKS \
+            -keystore "$KEYSTORE_PATH"
+          {
+            echo "KEYSTORE_FILE=$KEYSTORE_PATH"
+            echo "KEYSTORE_PASSWORD=pmax-ci"
+            echo "KEY_ALIAS=pmax"
+            echo "KEY_PASSWORD=pmax-ci"
+          } >> gradle.properties
+
+      - name: Build manager
+        run: ./gradlew assembleDebug assembleRelease
+
+      - name: Upload APKs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pmax-manager-apk
+          path: |
+            manager/app/build/outputs/apk/debug/*.apk
+            manager/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+          retention-days: 14

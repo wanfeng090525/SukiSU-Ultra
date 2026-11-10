@@ -39,6 +39,7 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.LayersClear
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Tune
 import com.sukisu.ultra.ui.component.Storefront
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Policy
@@ -67,6 +68,9 @@ import com.sukisu.ultra.ui.theme.backgroundAwareCardColors
 import com.sukisu.ultra.ui.util.BlurredBar
 import com.sukisu.ultra.ui.util.customText
 import com.sukisu.ultra.ui.util.CustomTextKey
+import com.sukisu.ultra.ui.util.LocalUiCustomization
+import com.sukisu.ultra.ui.util.UiSlots
+import com.sukisu.ultra.ui.util.isVisible
 import com.sukisu.ultra.ui.util.LocaleHelper
 import com.sukisu.ultra.ui.util.rememberBlurBackdrop
 import com.sukisu.ultra.ui.viewmodel.MainPageRequest
@@ -86,6 +90,13 @@ import top.yukonga.miuix.kmp.utils.scrollEndHaptic
  * @author weishu
  * @date 2023/1/1.
  */
+@Composable
+private fun SettingsCardGate(section: String, content: @Composable () -> Unit) {
+    if (LocalUiCustomization.current.isVisible(UiSlots.settingsCard(section))) {
+        content()
+    }
+}
+
 @Composable
 fun SettingPagerMiuix(
     uiState: SettingsUiState,
@@ -120,12 +131,14 @@ fun SettingPagerMiuix(
     AppScaffold(
         containerColor = if (hasCustomBackground) Color.Transparent else colorScheme.surface,
         topBar = {
-            BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
-                TopAppBar(
-                    color = Color.Transparent,
-                    title = customText(CustomTextKey.PAGE_SETTINGS),
-                    scrollBehavior = scrollBehavior
-                )
+            if (LocalUiCustomization.current.isVisible(UiSlots.CHROME_TOP_BAR)) {
+                BlurredBar(backdrop = backdrop, scrollBehavior = scrollBehavior) {
+                    TopAppBar(
+                        color = Color.Transparent,
+                        title = customText(CustomTextKey.PAGE_SETTINGS),
+                        scrollBehavior = scrollBehavior
+                    )
+                }
             }
         },
         popupHost = { },
@@ -143,6 +156,7 @@ fun SettingPagerMiuix(
                 overscrollEffect = null,
             ) {
                 item {
+                    SettingsCardGate(SettingsSection.GENERAL) {
                     AppCard(
                         modifier = Modifier
                             .bringIntoViewRequester(requester(SettingsSection.GENERAL))
@@ -213,10 +227,26 @@ fun SettingPagerMiuix(
                             },
                             onClick = actions.onOpenThemeStore
                         )
+                        val uiEditorTitle = stringResource(id = R.string.ui_editor_entry)
+                        ArrowPreference(
+                            title = uiEditorTitle,
+                            summary = stringResource(id = R.string.ui_editor_entry_summary),
+                            startAction = {
+                                Icon(
+                                    Icons.Rounded.Tune,
+                                    modifier = Modifier.padding(end = 6.dp),
+                                    contentDescription = uiEditorTitle,
+                                    tint = colorScheme.onBackground
+                                )
+                            },
+                            onClick = actions.onOpenUiEditor
+                        )
 
+                    }
                     }
 
                     KsuIsValid {
+                        SettingsCardGate(SettingsSection.PROFILE_TEMPLATES) {
                         AppCard(
                             modifier = Modifier
                                 .bringIntoViewRequester(requester(SettingsSection.PROFILE_TEMPLATES))
@@ -239,6 +269,8 @@ fun SettingPagerMiuix(
                                 onClick = actions.onOpenProfileTemplate
                             )
                         }
+                        }
+                        SettingsCardGate(SettingsSection.EXTENSIONS) {
                         AppCard(
                             modifier = Modifier
                                 .bringIntoViewRequester(requester(SettingsSection.EXTENSIONS))
@@ -261,7 +293,9 @@ fun SettingPagerMiuix(
                                 onClick = actions.onOpenExtensions
                             )
                         }
+                        }
                         val toolsTitle = customText(CustomTextKey.PAGE_TOOLS)
+                        SettingsCardGate(SettingsSection.TOOLS) {
                         AppCard(
                             modifier = Modifier
                                 .bringIntoViewRequester(requester(SettingsSection.TOOLS))
@@ -285,12 +319,15 @@ fun SettingPagerMiuix(
                                 }
                             )
                         }
+                        }
+                        SettingsCardGate(SettingsSection.TEMPORARY_ROOT) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .bringIntoViewRequester(requester(SettingsSection.TEMPORARY_ROOT))
                         ) {
                             TemporaryRootPreferences()
+                        }
                         }
                     }
 
@@ -301,6 +338,7 @@ fun SettingPagerMiuix(
                             stringResource(id = R.string.settings_mode_disable_always),
                         )
 
+                        SettingsCardGate(SettingsSection.SECURITY) {
                         AppCard(
                             modifier = Modifier
                                 .bringIntoViewRequester(requester(SettingsSection.SECURITY))
@@ -500,7 +538,9 @@ fun SettingPagerMiuix(
                                 onCheckedChange = actions.onSetUseSoftReboot
                             )
                         }
+                        }
 
+                        SettingsCardGate(SettingsSection.MODULE_BEHAVIOUR) {
                         AppCard(
                             modifier = Modifier
                                 .bringIntoViewRequester(requester(SettingsSection.MODULE_BEHAVIOUR))
@@ -581,9 +621,11 @@ fun SettingPagerMiuix(
                                 onCheckedChange = actions.onSetAutoJailbreak
                             )
                         }
+                        }
                     }
 
                     if (uiState.isLkmMode) {
+                        SettingsCardGate(SettingsSection.UNINSTALL) {
                         AppCard(
                             modifier = Modifier
                                 .bringIntoViewRequester(requester(SettingsSection.UNINSTALL))
@@ -610,8 +652,10 @@ fun SettingPagerMiuix(
                                 onDismissRequest = { showUninstallDialog.value = false }
                             )
                         }
+                        }
                     }
 
+                    SettingsCardGate(SettingsSection.DIAGNOSTICS) {
                     AppCard(
                         modifier = Modifier
                             .bringIntoViewRequester(requester(SettingsSection.DIAGNOSTICS))
@@ -649,6 +693,7 @@ fun SettingPagerMiuix(
                             },
                             onClick = actions.onOpenAbout,
                         )
+                    }
                     }
                     Spacer(Modifier.height(bottomInnerPadding))
                 }

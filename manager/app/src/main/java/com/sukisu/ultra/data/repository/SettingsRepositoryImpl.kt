@@ -49,6 +49,7 @@ internal const val KEY_ADAPTIVE_THEME = "adaptive_theme"
 internal const val KEY_ADAPTIVE_APPLIED_MODE = "adaptive_applied_mode"
 internal const val KEY_ADAPTIVE_DRAFT = "adaptive_theme_draft"
 internal const val KEY_CUSTOM_APPEARANCE = "custom_appearance_json"
+internal const val KEY_UI_CUSTOMIZATION = "ui_customization_json"
 
 
 fun isSoftRebootPreferred(): Boolean =
@@ -315,6 +316,10 @@ class SettingsRepositoryImpl : SettingsRepository {
     override var customAppearanceJson: String
         get() = prefs.getString(KEY_CUSTOM_APPEARANCE, "") ?: ""
         set(value) = prefs.edit { putString(KEY_CUSTOM_APPEARANCE, value) }
+
+    override var uiCustomizationJson: String
+        get() = prefs.getString(KEY_UI_CUSTOMIZATION, "") ?: ""
+        set(value) = prefs.edit { putString(KEY_UI_CUSTOMIZATION, value) }
 
     override var uiMode: String
         get() = prefs.getString("ui_mode", null) ?: initialUiMode().also { mode ->

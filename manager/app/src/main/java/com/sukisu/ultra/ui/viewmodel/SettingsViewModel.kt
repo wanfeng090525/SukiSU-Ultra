@@ -59,6 +59,7 @@ import com.sukisu.ultra.ui.util.HomeStatusStyle
 import com.sukisu.ultra.ui.util.ImportedTheme
 import com.sukisu.ultra.ui.util.ThemePackageData
 import com.sukisu.ultra.ui.util.ThemePackageStorage
+import com.sukisu.ultra.ui.util.UiCustomizationStore
 import com.sukisu.ultra.ui.util.ThemeTrialManager
 import com.sukisu.ultra.ui.util.findActivity
 import java.io.File
@@ -969,6 +970,9 @@ homeStatusAlignment = HomeStatusAlignment.fromValue(repo.homeStatusAlignment).va
                 options.bottomBarIcons
             },
             appearance = currentAppearanceForExport(options),
+            uiCustomization = UiCustomizationStore.load(repo).takeIf {
+                it != com.sukisu.ultra.ui.util.UiCustomizationData()
+            },
         )
         return CurrentThemePayload(
             data,
@@ -1471,6 +1475,9 @@ homePillScale = if (options.homeCardDisplay) source.homePillScale else null,
             resetAppearanceForImport(context, _uiState.value, options, imported)
         } else {
             _uiState.value
+        }
+        imported.data.uiCustomization?.let { customization ->
+            UiCustomizationStore.save(repo, customization)
         }
         val adaptiveState = if (imported.isAdaptive) {
             withContext(Dispatchers.IO) { buildAdaptiveState(context, imported, options) }

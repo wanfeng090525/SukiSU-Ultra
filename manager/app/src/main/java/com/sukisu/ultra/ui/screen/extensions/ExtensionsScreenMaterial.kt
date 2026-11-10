@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -32,6 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import com.sukisu.ultra.ui.util.customText
+import com.sukisu.ultra.ui.util.LocalUiCustomization
+import com.sukisu.ultra.ui.util.UiSlots
+import com.sukisu.ultra.ui.util.isVisible
 import com.sukisu.ultra.ui.util.CustomTextKey
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,8 +58,10 @@ fun ExtensionsScreenMaterial(
     onRefresh: () -> Unit,
     onOpenDetails: (ExtensionItem) -> Unit,
     onToggle: (ExtensionItem, Boolean) -> Unit,
+    onOpenTerminal: () -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val uiCustomization = LocalUiCustomization.current
 
     ExpressiveScaffold(
         topBar = {
@@ -73,11 +79,19 @@ fun ExtensionsScreenMaterial(
         ),
     ) { padding ->
         if (state.items.isEmpty() && !state.loading) {
-            EmptyExtensionsHint(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-            )
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (uiCustomization.isVisible(UiSlots.EXTENSIONS_TERMINAL)) {
+                    Spacer(Modifier.height(12.dp))
+                    TerminalCardMaterial(onOpenTerminal)
+                }
+                EmptyExtensionsHint(modifier = Modifier.weight(1f))
+            }
             return@ExpressiveScaffold
         }
 
@@ -92,19 +106,26 @@ fun ExtensionsScreenMaterial(
         ) {
             SegmentedColumn(
                 modifier = Modifier.padding(bottom = 13.dp),
-                content = state.items.map { item ->
-                    val extState = item.state
-                    val canOpen = extState.supported && item.descriptor.entry !is ExtensionEntry.Generic
-                    val onOpen = if (canOpen) {
-                        { onOpenDetails(item) }
-                    } else null
-                    {
-                        ExtensionCardMaterial(
-                            item = item,
-                            busy = item.wireName in state.busy,
-                            onOpenDetails = onOpen,
-                            onToggle = { enabled -> onToggle(item, enabled) },
-                        )
+                content = buildList<@Composable () -> Unit> {
+                    if (uiCustomization.isVisible(UiSlots.EXTENSIONS_TERMINAL)) {
+                        add { TerminalCardMaterial(onOpenTerminal) }
+                    }
+                    if (uiCustomization.isVisible(UiSlots.EXTENSIONS_LIST)) {
+                        state.items.forEach { item ->
+                            val extState = item.state
+                            val canOpen = extState.supported && item.descriptor.entry !is ExtensionEntry.Generic
+                            val onOpen = if (canOpen) {
+                                { onOpenDetails(item) }
+                            } else null
+                            add {
+                                ExtensionCardMaterial(
+                                    item = item,
+                                    busy = item.wireName in state.busy,
+                                    onOpenDetails = onOpen,
+                                    onToggle = { enabled -> onToggle(item, enabled) },
+                                )
+                            }
+                        }
                     }
                 },
             )
@@ -139,6 +160,41 @@ private fun TopBar(
         colors = expressiveTopAppBarColors(),
         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
         scrollBehavior = scrollBehavior,
+    )
+}
+
+@Composable
+private fun TerminalCardMaterial(onClick: () -> Unit) {
+    SegmentedListItem(
+        onClick = onClick,
+        leadingContent = {
+            IconTile(
+                icon = Icons.Rounded.Terminal,
+                contentDescription = stringResource(R.string.terminal_card_title),
+            )
+        },
+        headlineContent = {
+            Text(
+                text = stringResource(R.string.terminal_card_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        },
+        supportingContent = {
+            Text(
+                text = stringResource(R.string.terminal_card_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        trailingContent = {
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = null,
+            )
+        },
     )
 }
 

@@ -69,7 +69,8 @@ fun BottomBarMiuix(
     val progressiveBlur = LocalEnableProgressiveBlur.current && isRuntimeShaderSupported()
 
     val bottomBarIcons = rememberBottomBarIconPaths()
-    val items = BottomBarDestination.entries.map { destination ->
+    val destinations = rememberVisibleDestinations()
+    val items = destinations.map { destination ->
         Triple(
             destination,
             customText(destination.textKey),
@@ -82,8 +83,8 @@ fun BottomBarMiuix(
                 modifier = modifier,
                 color = if (blurBackdrop != null) Color.Transparent else backgroundAwareColor(MiuixTheme.colorScheme.surface),
                 content = {
-                    items.forEachIndexed { index, (destination, label, iconPath) ->
-                        val selected = mainState.selectedPage == index
+                    items.forEach { (destination, label, iconPath) ->
+                        val selected = mainState.selectedPage == destination.ordinal
                         if (iconPath.isNullOrBlank()) {
                             NavigationBarItem(
                                 modifier = Modifier.weight(1f),
@@ -91,18 +92,18 @@ fun BottomBarMiuix(
                                 label = label,
                                 selected = selected,
                                 onClick = {
-                                    mainState.animateToPage(index)
+                                    mainState.animateToPage(destination.ordinal)
                                 },
-                                badge = navigationBadgeFor(index, navigationBadge),
+                                badge = navigationBadgeFor(destination.ordinal, navigationBadge),
                             )
                         } else {
                             MiuixCustomNavigationBarItem(
                                 selected = selected,
-                                onClick = { mainState.animateToPage(index) },
+                                onClick = { mainState.animateToPage(destination.ordinal) },
                                 icon = destination.icon,
                                 iconPath = iconPath,
                                 label = label,
-                                badge = navigationBadgeFor(index, navigationBadge),
+                                badge = navigationBadgeFor(destination.ordinal, navigationBadge),
                             )
                         }
                     }
@@ -118,8 +119,8 @@ fun BottomBarMiuix(
                     detectTapGestures { }
                 }
                 .padding(start = 28.dp, end = 28.dp, bottom = bottomPadding),
-            selectedIndex = mainState.selectedPage,
-            onSelected = { mainState.animateToPage(it) },
+            selectedIndex = mainState.selectedPosition,
+            onSelected = { position -> mainState.animateToPage(mainState.destinationAt(position)) },
             backdrop = backdrop,
             tabsCount = items.size,
             isBlurEnabled = enableFloatingBottomBarBlur,
@@ -127,7 +128,7 @@ fun BottomBarMiuix(
         ) { activateTab ->
             items.forEachIndexed { index, (destination, label, iconPath) ->
                 FloatingBottomBarItem(
-                    selected = mainState.selectedPage == index,
+                    selected = mainState.selectedPage == destination.ordinal,
                     onClick = {
                         activateTab(index)
                     },
@@ -135,7 +136,7 @@ fun BottomBarMiuix(
                 ) {
                     // Icon and label take LocalContentColor so the FloatingBottomBar backdrop copy
                     // can recolor them to the accent tone inside the indicator pill.
-                    val badge = navigationBadgeFor(index, navigationBadge, floating = true)
+                    val badge = navigationBadgeFor(destination.ordinal, navigationBadge, floating = true)
                     val icon: @Composable () -> Unit = {
                         BottomBarIconContent(
                             icon = destination.icon,

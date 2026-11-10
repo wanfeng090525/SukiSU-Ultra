@@ -79,6 +79,11 @@ import com.sukisu.ultra.ui.util.CustomTextKey
 import com.sukisu.ultra.ui.util.HomeLayout
 import com.sukisu.ultra.ui.theme.isInDarkTheme
 import com.sukisu.ultra.ui.util.BlurredBar
+import com.sukisu.ultra.ui.util.LocalUiCustomization
+import com.sukisu.ultra.ui.util.UiLayoutKeys
+import com.sukisu.ultra.ui.util.UiSlots
+import com.sukisu.ultra.ui.util.isVisible
+import com.sukisu.ultra.ui.util.layoutDp
 import com.sukisu.ultra.ui.util.drawPainterCover
 import com.sukisu.ultra.ui.util.module.LatestVersionInfo
 import com.sukisu.ultra.ui.util.rememberBlurBackdrop
@@ -115,16 +120,22 @@ fun HomePagerMiuix(
     val blurActive = backdrop != null
     val hasCustomBackground = LocalBackgroundImagePath.current.isNotEmpty()
     val barColor = if (blurActive || hasCustomBackground) Color.Transparent else colorScheme.surface
+    val uiCustomization = LocalUiCustomization.current
+    val horizontalPadding = uiCustomization.layoutDp(UiLayoutKeys.HOME_PADDING, 12.dp)
+    val topPadding = uiCustomization.layoutDp(UiLayoutKeys.HOME_TOP_PADDING, 12.dp)
+    val itemSpacing = uiCustomization.layoutDp(UiLayoutKeys.HOME_SPACING, 12.dp)
     AppScaffold(
         containerColor = if (hasCustomBackground) Color.Transparent else colorScheme.surface,
         topBar = {
-            TopBar(
-                title = customText(CustomTextKey.HOME_TITLE),
-                scrollBehavior = scrollBehavior,
-                backdrop = backdrop,
-                barColor = barColor,
-                onOpenThemeStore = actions.onOpenThemeStore,
-            )
+            if (uiCustomization.isVisible(UiSlots.CHROME_TOP_BAR)) {
+                TopBar(
+                    title = customText(CustomTextKey.HOME_TITLE),
+                    scrollBehavior = scrollBehavior,
+                    backdrop = backdrop,
+                    barColor = barColor,
+                    onOpenThemeStore = actions.onOpenThemeStore,
+                )
+            }
         },
         popupHost = { },
         contentWindowInsets = WindowInsets.systemBars.add(WindowInsets.displayCutout).only(WindowInsetsSides.Horizontal)
@@ -136,28 +147,31 @@ fun HomePagerMiuix(
                     .scrollEndHaptic()
                     .overScrollVertical()
                     .nestedScroll(scrollBehavior.nestedScrollConnection)
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = horizontalPadding),
                 contentPadding = innerPadding,
                 overscrollEffect = null,
             ) {
                 item {
                     Column(
-                        modifier = Modifier.padding(top = 12.dp),
+                        modifier = Modifier.padding(top = topPadding),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(itemSpacing),
                     ) {
-                        StatusCard(
-                            state = state,
-                            actions = actions,
-                        )
+                        if (uiCustomization.isVisible(UiSlots.HOME_STATUS)) {
+                            StatusCard(
+                                state = state,
+                                actions = actions,
+                            )
+                        }
+                if (uiCustomization.isVisible(UiSlots.HOME_UPDATE) && state.checkUpdateEnabled) {
+                    UpdateCard(state = state, actions = actions)
+                }
+                if (uiCustomization.isVisible(UiSlots.HOME_WARNINGS)) {
                 if (state.showVersionMismatchWarning) {
                     WarningCard(
                         customText(CustomTextKey.HOME_WARN_VERSION_SPOOF),
                         onClick = actions.onOpenVersionSpoof,
                     )
-                }
-                if (state.checkUpdateEnabled) {
-                    UpdateCard(state = state, actions = actions)
                 }
                         if (!state.hideHomeWarnings) {
                             if (state.showManagerPrBuildWarning && state.showFullStatus) {
@@ -193,22 +207,29 @@ fun HomePagerMiuix(
                         if (state.isPreviewMode && !state.hideHomeWarnings) {
                             WarningCard(customText(CustomTextKey.HOME_WARN_PREVIEW_MODE), level = WarningLevel.Notice)
                         }
-                        if (state.showAiHomeCard && AiFeatureBridge.isAvailable) {
+                        }
+                        if (uiCustomization.isVisible(UiSlots.HOME_AI) && state.showAiHomeCard && AiFeatureBridge.isAvailable) {
                             // MD3 card inside the Miuix page: use the MD3 scheme of the appearance settings.
                             AiAssistantMaterialTheme {
                                 AiFeatureBridge.HomeCard(onOpenChat = actions.onOpenAi)
                             }
                         }
-                        StatsRow(state = state, actions = actions)
-                        InfoCard(
-                            systemInfo = state.systemInfo,
-                            showFullStatus = state.showFullStatus,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        SupportLinks(
-                            onOpenUrl = actions.onOpenUrl,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        if (uiCustomization.isVisible(UiSlots.HOME_STATS)) {
+                            StatsRow(state = state, actions = actions)
+                        }
+                        if (uiCustomization.isVisible(UiSlots.HOME_INFO)) {
+                            InfoCard(
+                                systemInfo = state.systemInfo,
+                                showFullStatus = state.showFullStatus,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        if (uiCustomization.isVisible(UiSlots.HOME_SUPPORT)) {
+                            SupportLinks(
+                                onOpenUrl = actions.onOpenUrl,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                         Spacer(
                             Modifier.height(
                                 bottomInnerPadding + if (!Natives.isFullFeatured())

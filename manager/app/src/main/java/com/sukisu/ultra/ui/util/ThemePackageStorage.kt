@@ -114,6 +114,11 @@ data class ThemePackageData(
     val customHomeTitle: String? = null,
     val customTexts: Map<String, String>? = null,
     /**
+     * Layout / visibility edits made in the interface editor. Applied on import so a theme can
+     * hide pages or widgets and adjust spacing. Added in package format v5 as an optional field.
+     */
+    val uiCustomization: UiCustomizationData? = null,
+    /**
      * Bottom bar icon slots that carry a custom image. The images themselves live in
      * `bottom_bar_icon_<slot>` entries. Global for both adaptive and plain packages.
      */

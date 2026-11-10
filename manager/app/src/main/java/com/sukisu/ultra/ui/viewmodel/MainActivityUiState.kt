@@ -3,6 +3,7 @@ package com.sukisu.ultra.ui.viewmodel
 import androidx.compose.runtime.Immutable
 import com.sukisu.ultra.ui.UiMode
 import com.sukisu.ultra.ui.theme.AppSettings
+import com.sukisu.ultra.ui.util.UiCustomizationData
 
 @Immutable
 data class MainActivityUiState(
@@ -26,4 +27,5 @@ data class MainActivityUiState(
     val keyColorOverride: Int? = null,
     val uiMode: UiMode,
     val customTexts: Map<String, String> = emptyMap(),
+    val uiCustomization: UiCustomizationData = UiCustomizationData(),
 )
